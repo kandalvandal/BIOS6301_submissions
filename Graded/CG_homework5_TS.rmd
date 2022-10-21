@@ -271,7 +271,7 @@ funs[which.max(funs_num_args)] # scan function
 ```
 
 1. How many functions have no arguments? (2 points) 227
-**Answer: 225**
+
 ```{r}
 length(funs_num_args[funs_num_args == 0]) # 227 functions
 
