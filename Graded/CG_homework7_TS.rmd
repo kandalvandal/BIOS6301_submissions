@@ -10,6 +10,8 @@ $5^{n=day}$ points taken off for each day late.
 
 40 points total.
 
+**39/40, good job! See comments below. Tianyi**
+
 Submit a single knitr file (named `homework7.rmd`), along with a valid PDF output file. Inside the file, clearly indicate which parts of your responses go with which problems (you may use the original homework document as a template). Add your name as `author` to the file's metadata section. Raw R code/output or word processor files are not acceptable.
 
 Failure to name file `homework7.rmd` or include author name may result in 5 points taken off.
@@ -138,6 +140,11 @@ head(sw_fry_1000)
 
 ```{r}
 a <- tolower(grep("[^1-9]", sw_fry_1000, value=TRUE))
+
+# a2 would have "'" removed. This would affect the answer in Q8
+a2 <- gsub('[^a-z]', '', tolower(sw_fry_1000))
+a2 [which(a!=a2)]
+a [which(a!=a2)]
 ```
 
 Use vector `a` for the following questions. (2 points each)
@@ -164,6 +171,9 @@ grep("^col|eck$", sw_fry_1000, value=TRUE)
 
 ```{r}
 grep("[b,c,d,f,g,h,j,k,l,m,n,p,q,r,s,t,v,w,x,y,z]{4}", sw_fry_1000, value=TRUE)
+
+# Alternative coding: 
+length(grep('[^aeiou]{4}', a))
 ```
 
 6. Return all words with a "q" that isn't followed by a "ui".
@@ -175,9 +185,26 @@ grep("q.[^ui]", sw_fry_1000, value=TRUE)
 7. Find all words that contain a "k" followed by another letter. Run the `table` command on the first character following the first "k" of each word.
 
 ```{r}
+a2 <- gsub('[^a-z]', '', tolower(sw_fry_1000))
+
 k <- grep("k[a-z]", sw_fry_1000, value=TRUE)
-k_cut <- sub(".*k.*([a-z].*$)", "\\1", k)
+k_cut <- sub(".*k.*([a-z].*$)", "\\1", k) # TS: This seems return the last letter from the word. See code below. -0.5
 table(k_cut)
+
+# TS: 
+k = grep("[k]",a, value=TRUE)
+# record the location of k
+ind_k=rep(NA,length(k))
+# record the next location
+ind_next=rep(NA,length(k))
+# record the letter in the next location
+ltrfk=rep(NA,length(k))
+for (i in 1:length(k)){
+  ind_k[i]=which(strsplit((k),"")[[i]]=='k')
+  ind_next[i]=ind_k[i]+1
+  ltrfk[i]=strsplit((k),"")[[i]][ind_next[i]]
+}
+table(ltrfk)
 ```
 
 8. Remove all vowels. How many character strings are found exactly once?
@@ -185,6 +212,10 @@ table(k_cut)
 ```{r}
 no_vowels <- gsub("[aeiou]", "", sw_fry_1000)
 length(unique(no_vowels)) #743 unique character strings, once vowels are cut out
+
+# TS: This return the number of unique value in no_vowels. However, we want to find the number of strings that only appear once. See code below. -0.5
+b <- gsub('[aeiou]', '', no_vowels)
+sum(!(b %in% b[duplicated(b)]))
 ```
 
 ### Question 3 ###
@@ -193,6 +224,7 @@ length(unique(no_vowels)) #743 unique character strings, once vowels are cut out
 
 The first argument to most functions that fit linear models are formulas.  The following example defines the response variable `death` and allows the model to incorporate all other variables as terms. `.` is used to mean all columns not otherwise in the formula.
 
+**TS: The issue is as.formula (response~.) would return response ~ . but what we want is death~.**
 ```{r}
 #url <- "https://github.com/couthcommander/Bios6301/raw/master/datasets/haart.csv"
 #haart_df <- read.csv(url)[,c('death','weight','hemoglobin','cd4baseline')]
@@ -221,6 +253,8 @@ What do you think is going on?  Consider using `debug` to trace the problem.
 #myfun(haart_df, death)
 
 # This may just be a problem on my end, but it seems that the issue is originating with the url. The web address may be faulty, which is not allowing the dataset to load.
+
+# TS: It used the same haart data
 ```
 
 **5 bonus points**
