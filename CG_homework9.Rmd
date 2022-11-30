@@ -2,9 +2,9 @@
 title: 'Bios 6301: Assignment 9'
 author: "Catherine Greene"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 *Due Tuesday, 29 November, 1:00 PM*
@@ -104,8 +104,6 @@ You calculated the power of a study design in question #1 of assignment 3. The s
 Starting with a sample size of 250, create a 95% bootstrap percentile interval for the mean of each group. Then create a new bootstrap interval by increasing the sample size by 250 until the sample is 2500. Thus you will create a total of 10 bootstrap intervals.  Each bootstrap should create 1000 bootstrap samples. (9 points)
 
 ```{r echo=TRUE, error=TRUE}
-# I think I may have misunderstood what this question wants. The example plot is much more variable than mine, which is pretty stable at 60 and 65. I think I'm having trouble understanding what '1000' bootstrap samples means - but tbh I'm spending a lot of time on this and I need to move on.
-
 # power function from assignment 3
 power <- function(sample_size) {
   mean(replicate(1000, {
@@ -121,50 +119,66 @@ power <- function(sample_size) {
 
 # now working on the homework problem
 
-bootmean_controls <- c()
-bootmean_exp <- c()
-
-boot_interval <- function(sample_size) {
-  for (k in (1:1000)) { # loop to do the bootstrapping, I find his simpler than doing replicate since I can add means to a vector for later
-    treatment <- rbinom(sample_size, 1, 0.5)
-    outcome <- rnorm(sample_size, mean=60, sd=20)
+# another attempt at bootstrapping
+sim_sample <- function (sample_size) {
+  treatment <- rbinom(sample_size, 1, 0.5)
+  outcome <- rnorm(sample_size, mean=60, sd=20)
       for (i in 1:sample_size) {
         if (treatment[i]==1){
           outcome[i] <- outcome[i] + 5
         }
       }
-    df <- data.frame(treatment, outcome) # I'm doing this so I can specify controls vs treatments
-    controls <- df[which(df['treatment']==as.integer(0)),]['outcome'][['outcome']] # controls
-    exp <- df[which(df['treatment']==as.integer(1)),]['outcome'][['outcome']] # treatment, I want them both to be vectors
-    bootmean_controls[k] <- mean(controls)
-    bootmean_exp[k] <- mean(exp)
-  }
-  final_control_mean <- mean(bootmean_controls)
-  final_exp_mean <- mean(bootmean_exp)
-  control_interval <- mean(bootmean_controls) + qnorm(c(0.05, 0.95)) * sd(bootmean_controls) / sqrt(length(bootmean_controls))
-  exp_interval <- mean(bootmean_exp) + qnorm(c(0.05, 0.95)) * sd(bootmean_exp) / sqrt(length(bootmean_exp))
-  # return all my stuff
-  mean_vector <- c(final_control_mean, final_exp_mean)
-  interval_vector_lower <- c(control_interval[1], exp_interval[1])
-  interval_vector_higher <- c(control_interval[2], exp_interval[2])
-  treatment_vector <- c(0, 1)
-  df_total <- data.frame(
-    mean_vector, 
-    interval_vector_lower,
-    interval_vector_higher,
-    rep(sample_size, 2),
-    treatment_vector
-    )
-  colnames(df_total) = c('mean', 'low', 'high', 'sample', 'treatment')
-  df_total
+  df <- data.frame(treatment, outcome)
+  df
 }
 
+boot_interval <- function(sample_size) {
+  x <- sim_sample(sample_size)
+  # set up the empty matrix
+  bootmean <- matrix(nrow=1000, ncol=2) 
+  
+  # bootstrapping
+  for(i in 1:nrow(bootmean)) {
+    boot.x <- x[sample(nrow(x), nrow(x), replace=TRUE),] # bootstrap sample
+    controls <- boot.x[which(boot.x[,1]==as.integer(0)),][,2]
+    exp <- boot.x[which(boot.x[,1]==as.integer(1)),][,2]
+    bootmean[i,] <- c(mean(controls), mean(exp))
+  }
+  
+  # separate the control and treatment groups, and find the mean of each
+  controls <- bootmean[,1] 
+  exp <- bootmean[,2]
+  means <- c(mean(controls), mean(exp))
+  # find the 5% and 95% bootstrap intervals for the mean of each group
+  control_interval <- means[1] + qnorm(c(0.05, 0.95)) * sd(controls) #/ sqrt(length(controls)) 
+  exp_interval <- means[2] + qnorm(c(0.05, 0.95)) * sd(exp) #/ sqrt(length(exp))
+  
+  # get set up for the data frame - these will both be columns
+  low_ci <- c(control_interval[1], exp_interval[1])
+  high_ci <- c(control_interval[2], exp_interval[2])
+  # data frame
+  boot_data <- data.frame(
+    means,
+    low_ci, # low, rows still match up
+    high_ci, # high
+    rep(sample_size, 2),
+    as.factor(c(0,1)) # controls first, then treatment group
+  )
+  names(boot_data) <- c('means', 'low_ci', 'high_ci', 'sample_size', 'treatment') # I want the names of columns to all make sense
+  boot_data
+}
+
+boot_interval(250) # yay! It works
+```
+
+```{r}
+# on to running with different sample sizes!
 boot_list <- seq(from=250, to=2500, by=250) # now to increase the sample size
 
 # I originally wanted to combine these into one dataframe using a loop, but I was having trouble getting it to work
-boot_data <- rbind(boot_interval(250), boot_interval(500), boot_interval(750), boot_interval(1000), boot_interval(1250), boot_interval(1500), boot_interval(1750), boot_interval(2000), boot_interval(2250), boot_interval(2500))
+final <- rbind(boot_interval(250), boot_interval(500), boot_interval(750), boot_interval(1000), boot_interval(1250), boot_interval(1500), boot_interval(1750), boot_interval(2000), boot_interval(2250), boot_interval(2500))
 
-boot_data # all info in one dataframe, with a column clarifying treatment vs control
+final # all info in one dataframe, with a column clarifying treatment vs control
 
 ```
 
@@ -203,9 +217,10 @@ polygon(x=c(seq(-0.25, 0.75, length.out=100), seq(0.75, -0.25, length.out=100)),
 ```
 
 ```{r echo=TRUE, error=TRUE}
-# ggplot
-plot <- ggplot(data=boot_data) + geom_line(mapping = aes(x=sample, y=mean, group=treatment)) #geom=c("ribbon")(aes(ymin=low, ymax=high))
+library(ggplot2)
 
-plot + geom_ribbon(aes(x=sample, y=mean, group=treatment, ymin = low, ymax = high), alpha = 0.2)
+ggplot(data=final, aes(x=sample_size, y=means, group=treatment, color=treatment, fill=treatment)) + 
+  geom_line(col="black") +
+  geom_ribbon(aes(ymin=low_ci, ymax=high_ci), alpha=0.2)
 
 ```
